@@ -72,7 +72,7 @@ func (r *Registry) Exchange(m proto.Message) (string, error) {
 	})
 }
 
-// Exchange ensures that the specified queue exists and returns the name
+// Queue ensures that the specified queue exists and returns the name
 func (r *Registry) Queue(m proto.Message) (string, error) {
 	en, err := r.Exchange(m)
 	if err != nil {
