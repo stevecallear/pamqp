@@ -90,7 +90,7 @@ func ChainMiddleware(m ...MiddlewareFunc) MiddlewareFunc {
 	}
 }
 
-// WithRegistry configures the publisher/subscriber to use the specified registry
+// WithRegistry configures the publisher/consumer to use the specified registry
 func WithRegistry(r *Registry) func(*Options) {
 	return func(o *Options) {
 		o.ExchangeNameFn = r.Exchange
@@ -98,7 +98,7 @@ func WithRegistry(r *Registry) func(*Options) {
 	}
 }
 
-// WithMiddleware configures the publisher/subscriber to use the specified middleware
+// WithMiddleware configures the publisher/consumer to use the specified middleware
 func WithMiddleware(mw ...MiddlewareFunc) func(*Options) {
 	return func(o *Options) {
 		o.MiddlewareFn = ChainMiddleware(mw...)

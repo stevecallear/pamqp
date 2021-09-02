@@ -44,7 +44,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	s := pamqp.NewSubscriber(conn, pamqp.WithRegistry(r))
+	c := pamqp.NewConsumer(conn, pamqp.WithRegistry(r))
 
 	ctx := newContext()
 	wg := new(sync.WaitGroup)
@@ -53,7 +53,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		if err := s.Subscribe(ctx, new(handler)); err != nil {
+		if err := c.Consume(ctx, new(handler)); err != nil {
 			log.Fatal(err)
 		}
 	}()
