@@ -1,7 +1,6 @@
 package pamqp
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/streadway/amqp"
@@ -31,10 +30,10 @@ var defaultRegistryOptions = RegistryOptions{
 		return c.Channel()
 	},
 	ExchangeNameFn: func(m proto.Message) string {
-		return entityName(m)
+		return entityName("", m)
 	},
 	QueueNameFn: func(m proto.Message) string {
-		return entityName(m)
+		return entityName("", m)
 	},
 }
 
@@ -130,16 +129,15 @@ func (r *Registry) getOrSet(key string, fn func() (string, error)) (string, erro
 	return v, nil
 }
 
-// WithPrefixNaming applies a prefix naming convention to exchange and queue names
-// Exchanges take the form stage-package-message
-// Queues take the form stage-package-message-service
-func WithPrefixNaming(stage, service string) func(*RegistryOptions) {
+// WithConsumerPrefix applies a consumer prefix naming convention to queue names
+// This ensures that each seperate consumer uses a dedicated queue bound to the publisher exchange.
+func WithConsumerPrefix(consumer string) func(*RegistryOptions) {
 	return func(o *RegistryOptions) {
 		o.ExchangeNameFn = func(m proto.Message) string {
-			return fmt.Sprintf("%s-%s", stage, entityName(m))
+			return entityName("", m)
 		}
 		o.QueueNameFn = func(m proto.Message) string {
-			return fmt.Sprintf("%s-%s-%s", stage, service, entityName(m))
+			return entityName(consumer, m)
 		}
 	}
 }

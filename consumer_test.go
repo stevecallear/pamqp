@@ -158,7 +158,7 @@ func TestConsumer_Consume(t *testing.T) {
 		{
 			name: "should ack handled messages",
 			setup: func(r *mocks.MockChannelMockRecorder, a *mocks.MockAcknowledgerMockRecorder) {
-				r.Consume("test-message", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				r.Consume("test.message", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(deliveries, nil).Times(1)
 
 				a.Ack(gomock.Any(), false).Return(nil)
