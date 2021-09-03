@@ -63,7 +63,7 @@ func (r *Registry) Exchange(m proto.Message) (string, error) {
 	return r.getOrSet("exchange:"+MessageName(m), func() (string, error) {
 		en := r.exchangeNameFn(m)
 
-		err := r.channel.ExchangeDeclare(en, amqp.ExchangeFanout, false, false, false, false, nil)
+		err := r.channel.ExchangeDeclare(en, amqp.ExchangeFanout, true, false, false, false, nil)
 		if err != nil {
 			return "", err
 		}
@@ -82,7 +82,7 @@ func (r *Registry) Queue(m proto.Message) (string, error) {
 	return r.getOrSet("queue:"+MessageName(m), func() (string, error) {
 		qn := r.queueNameFn(m)
 
-		q, err := r.channel.QueueDeclare(qn, false, false, false, false, nil)
+		q, err := r.channel.QueueDeclare(qn, true, false, false, false, nil)
 		if err != nil {
 			return "", err
 		}

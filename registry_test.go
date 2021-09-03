@@ -65,7 +65,7 @@ func TestRegistry_Exchange(t *testing.T) {
 		{
 			name: "should return the default exchange name",
 			setup: func(m *mocks.MockChannelMockRecorder) {
-				m.ExchangeDeclare("test.message", amqp.ExchangeFanout, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				m.ExchangeDeclare("test.message", amqp.ExchangeFanout, true, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).Times(1)
 			},
 			optFn: func(*pamqp.RegistryOptions) {},
@@ -74,7 +74,7 @@ func TestRegistry_Exchange(t *testing.T) {
 		{
 			name: "should use the exchange name option func",
 			setup: func(m *mocks.MockChannelMockRecorder) {
-				m.ExchangeDeclare("expected", amqp.ExchangeFanout, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				m.ExchangeDeclare("expected", amqp.ExchangeFanout, true, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).Times(1)
 			},
 			optFn: func(o *pamqp.RegistryOptions) {
@@ -163,7 +163,7 @@ func TestRegistry_Queue(t *testing.T) {
 				m.ExchangeDeclare(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).Times(1)
 
-				m.QueueDeclare(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				m.QueueDeclare("test.message", true, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(amqp.Queue{Name: "test.message"}, nil).Times(1)
 
 				m.QueueBind("test.message", "", gomock.Any(), gomock.Any(), gomock.Any()).
@@ -178,7 +178,7 @@ func TestRegistry_Queue(t *testing.T) {
 				m.ExchangeDeclare(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).Times(1)
 
-				m.QueueDeclare(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				m.QueueDeclare("expected", true, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(amqp.Queue{Name: "expected"}, nil).Times(1)
 
 				m.QueueBind("expected", "", gomock.Any(), gomock.Any(), gomock.Any()).
@@ -197,7 +197,7 @@ func TestRegistry_Queue(t *testing.T) {
 				m.ExchangeDeclare(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).Times(1)
 
-				m.QueueDeclare(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				m.QueueDeclare("test.message", true, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(amqp.Queue{Name: "test.message"}, nil).Times(1)
 
 				m.QueueBind("test.message", "", gomock.Any(), gomock.Any(), gomock.Any()).
