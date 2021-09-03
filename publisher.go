@@ -11,6 +11,7 @@ import (
 type Publisher struct {
 	channel        Channel
 	exchangeNameFn func(proto.Message) (string, error)
+	routingKeyFn   func(proto.Message) (string, error)
 	middlewareFn   MiddlewareFunc
 }
 
@@ -29,6 +30,7 @@ func NewPublisher(c *amqp.Connection, optFns ...func(*Options)) (*Publisher, err
 	return &Publisher{
 		channel:        ch,
 		exchangeNameFn: o.ExchangeNameFn,
+		routingKeyFn:   o.RoutingKeyFn,
 		middlewareFn:   o.MiddlewareFn,
 	}, nil
 }
@@ -66,12 +68,17 @@ func (p *Publisher) handlePublish(ctx context.Context, m proto.Message, md Metad
 		return err
 	}
 
+	k, err := p.routingKeyFn(m)
+	if err != nil {
+		return err
+	}
+
 	b, err := proto.Marshal(m)
 	if err != nil {
 		return err
 	}
 
-	return p.channel.Publish(e, "", false, false, amqp.Publishing{
+	return p.channel.Publish(e, k, false, false, amqp.Publishing{
 		Headers:       md.Headers,
 		Body:          b,
 		ContentType:   md.ContentType,

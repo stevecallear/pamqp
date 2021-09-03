@@ -43,6 +43,7 @@ type (
 		ChannelFn      func(*amqp.Connection) (Channel, error)
 		ExchangeNameFn func(proto.Message) (string, error)
 		QueueNameFn    func(proto.Message) (string, error)
+		RoutingKeyFn   func(proto.Message) (string, error)
 		MiddlewareFn   MiddlewareFunc
 		ErrorFn        func(Metadata, error)
 	}
@@ -64,10 +65,13 @@ var (
 			return c.Channel()
 		},
 		ExchangeNameFn: func(m proto.Message) (string, error) {
-			return entityName(m), nil
+			return strings.ToLower(MessageName(m)), nil
 		},
 		QueueNameFn: func(m proto.Message) (string, error) {
-			return entityName(m), nil
+			return strings.ToLower(MessageName(m)), nil
+		},
+		RoutingKeyFn: func(proto.Message) (string, error) {
+			return "", nil
 		},
 		ErrorFn: func(_ Metadata, err error) {
 			log.Println(err)
@@ -90,7 +94,7 @@ func ChainMiddleware(m ...MiddlewareFunc) MiddlewareFunc {
 	}
 }
 
-// WithRegistry configures the publisher/subscriber to use the specified registry
+// WithRegistry configures the publisher/consumer to use the specified registry
 func WithRegistry(r *Registry) func(*Options) {
 	return func(o *Options) {
 		o.ExchangeNameFn = r.Exchange
@@ -98,13 +102,9 @@ func WithRegistry(r *Registry) func(*Options) {
 	}
 }
 
-// WithMiddleware configures the publisher/subscriber to use the specified middleware
+// WithMiddleware configures the publisher/consumer to use the specified middleware
 func WithMiddleware(mw ...MiddlewareFunc) func(*Options) {
 	return func(o *Options) {
 		o.MiddlewareFn = ChainMiddleware(mw...)
 	}
-}
-
-func entityName(m proto.Message) string {
-	return strings.ReplaceAll(strings.ToLower(MessageName(m)), ".", "-")
 }

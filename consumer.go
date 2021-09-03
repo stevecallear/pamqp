@@ -14,8 +14,8 @@ type (
 		Handle(context.Context, proto.Message, Metadata) error
 	}
 
-	// Subscriber represents a subscriber
-	Subscriber struct {
+	// Consumer represents a consumer
+	Consumer struct {
 		conn         *amqp.Connection
 		channelFn    func(*amqp.Connection) (Channel, error)
 		queueNameFn  func(proto.Message) (string, error)
@@ -24,14 +24,14 @@ type (
 	}
 )
 
-// NewSubscriber returns a new subscriber
-func NewSubscriber(c *amqp.Connection, optFns ...func(*Options)) *Subscriber {
+// NewConsumer returns a new consumer
+func NewConsumer(c *amqp.Connection, optFns ...func(*Options)) *Consumer {
 	o := defaultOptions
 	for _, fn := range optFns {
 		fn(&o)
 	}
 
-	return &Subscriber{
+	return &Consumer{
 		conn:         c,
 		channelFn:    o.ChannelFn,
 		queueNameFn:  o.QueueNameFn,
@@ -40,15 +40,15 @@ func NewSubscriber(c *amqp.Connection, optFns ...func(*Options)) *Subscriber {
 	}
 }
 
-// Subscribe creates a subscription for the specified handler
+// Consume consumes messages for the specified handler
 // The call is blocking until the supplied context is cancelled
-func (s *Subscriber) Subscribe(ctx context.Context, h Handler) error {
-	ch, err := s.channelFn(s.conn)
+func (c *Consumer) Consume(ctx context.Context, h Handler) error {
+	ch, err := c.channelFn(c.conn)
 	if err != nil {
 		return err
 	}
 
-	q, err := s.queueNameFn(h.Message())
+	q, err := c.queueNameFn(h.Message())
 	if err != nil {
 		return err
 	}
@@ -59,8 +59,8 @@ func (s *Subscriber) Subscribe(ctx context.Context, h Handler) error {
 	}
 
 	var hfn HandlerFunc = h.Handle
-	if s.middlewareFn != nil {
-		hfn = s.middlewareFn(hfn)
+	if c.middlewareFn != nil {
+		hfn = c.middlewareFn(hfn)
 	}
 
 	for {
@@ -68,7 +68,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, h Handler) error {
 		case <-ctx.Done():
 			return nil
 		case d := <-dc:
-			handleDelivery(ctx, d, h.Message(), hfn, s.errorFn)
+			handleDelivery(ctx, d, h.Message(), hfn, c.errorFn)
 		}
 	}
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/stevecallear/pamqp/internal/proto/testpb"
 )
 
-func TestSubscriber_Subscribe(t *testing.T) {
+func TestConsumer_Consume(t *testing.T) {
 	deliveries := make(chan amqp.Delivery)
 	defer func() {
 		close(deliveries)
@@ -158,7 +158,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 		{
 			name: "should ack handled messages",
 			setup: func(r *mocks.MockChannelMockRecorder, a *mocks.MockAcknowledgerMockRecorder) {
-				r.Consume("test-message", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				r.Consume("test.message", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(deliveries, nil).Times(1)
 
 				a.Ack(gomock.Any(), false).Return(nil)
@@ -214,7 +214,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 			tt.setup(ch.EXPECT(), ack.EXPECT())
 
 			var errCount int32
-			sut := pamqp.NewSubscriber(nil, func(o *pamqp.Options) {
+			sut := pamqp.NewConsumer(nil, func(o *pamqp.Options) {
 				o.ChannelFn = func(*amqp.Connection) (pamqp.Channel, error) {
 					return ch, nil
 				}
@@ -232,12 +232,12 @@ func TestSubscriber_Subscribe(t *testing.T) {
 
 			go func() {
 				defer wg.Done()
-				if err := sut.Subscribe(ctx, tt.handler); err != nil {
+				if err := sut.Consume(ctx, tt.handler); err != nil {
 					atomic.AddInt32(&errCount, 1)
 				}
 			}()
 
-			time.Sleep(10 * time.Millisecond) // wait for subscribe errors
+			time.Sleep(10 * time.Millisecond) // wait for consume errors
 
 			if atomic.LoadInt32(&errCount) < 1 {
 				d := amqp.Delivery{Acknowledger: ack}

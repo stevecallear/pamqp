@@ -65,11 +65,11 @@ func TestRegistry_Exchange(t *testing.T) {
 		{
 			name: "should return the default exchange name",
 			setup: func(m *mocks.MockChannelMockRecorder) {
-				m.ExchangeDeclare("test-message", amqp.ExchangeFanout, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				m.ExchangeDeclare("test.message", amqp.ExchangeFanout, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).Times(1)
 			},
 			optFn: func(*pamqp.RegistryOptions) {},
-			exp:   "test-message",
+			exp:   "test.message",
 		},
 		{
 			name: "should use the exchange name option func",
@@ -164,13 +164,13 @@ func TestRegistry_Queue(t *testing.T) {
 					Return(nil).Times(1)
 
 				m.QueueDeclare(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(amqp.Queue{Name: "test-message"}, nil).Times(1)
+					Return(amqp.Queue{Name: "test.message"}, nil).Times(1)
 
-				m.QueueBind("test-message", "", gomock.Any(), gomock.Any(), gomock.Any()).
+				m.QueueBind("test.message", "", gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).Times(1)
 			},
 			optFn: func(*pamqp.RegistryOptions) {},
-			exp:   "test-message",
+			exp:   "test.message",
 		},
 		{
 			name: "should use the queue name option func",
@@ -198,9 +198,9 @@ func TestRegistry_Queue(t *testing.T) {
 					Return(nil).Times(1)
 
 				m.QueueDeclare(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(amqp.Queue{Name: "test-message"}, nil).Times(1)
+					Return(amqp.Queue{Name: "test.message"}, nil).Times(1)
 
-				m.QueueBind("test-message", "", gomock.Any(), gomock.Any(), gomock.Any()).
+				m.QueueBind("test.message", "", gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).Times(1)
 
 				_, err := r.Exchange(new(testpb.Message))
@@ -209,7 +209,7 @@ func TestRegistry_Queue(t *testing.T) {
 				}
 			},
 			optFn: func(*pamqp.RegistryOptions) {},
-			exp:   "test-message",
+			exp:   "test.message",
 		},
 	}
 
@@ -284,18 +284,33 @@ func TestRegistry_Close(t *testing.T) {
 	}
 }
 
-func TestWithPrefixNaming(t *testing.T) {
+func TestWithConsumerNaming(t *testing.T) {
 	t.Run("should configure the options", func(t *testing.T) {
 		var o pamqp.RegistryOptions
-		pamqp.WithPrefixNaming("stage", "service")(&o)
+		pamqp.WithConsumerNaming("consumer")(&o)
 
 		msg := new(testpb.Message)
 
-		if act, exp := o.ExchangeNameFn(msg), "stage-test-message"; act != exp {
+		if act, exp := o.ExchangeNameFn(msg), "test.message"; act != exp {
 			t.Errorf("got %s, expected %s", act, exp)
 		}
 
-		if act, exp := o.QueueNameFn(msg), "stage-service-test-message"; act != exp {
+		if act, exp := o.QueueNameFn(msg), "consumer.test.message"; act != exp {
+			t.Errorf("got %s, expected %s", act, exp)
+		}
+	})
+
+	t.Run("should configure the options with prefixes", func(t *testing.T) {
+		var o pamqp.RegistryOptions
+		pamqp.WithConsumerNaming("consumer", "p1", "p2")(&o)
+
+		msg := new(testpb.Message)
+
+		if act, exp := o.ExchangeNameFn(msg), "p1.p2.test.message"; act != exp {
+			t.Errorf("got %s, expected %s", act, exp)
+		}
+
+		if act, exp := o.QueueNameFn(msg), "p1.p2.consumer.test.message"; act != exp {
 			t.Errorf("got %s, expected %s", act, exp)
 		}
 	})

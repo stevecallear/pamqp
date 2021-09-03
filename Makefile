@@ -13,5 +13,7 @@ cover: generate
 
 .PHONY: example
 example: cover
-	env GOOS=linux GOARCH=amd64 go build -o ./bin/example_linux ./example
-	env GOOS=windows GOARCH=amd64 go build -o ./bin/example_windows.exe ./example
+	env GOOS=linux GOARCH=amd64 go build -o ./bin/example_registry_linux ./example/registry
+	env GOOS=windows GOARCH=amd64 go build -o ./bin/example_registry_windows.exe ./example/registry
+	env GOOS=linux GOARCH=amd64 go build -o ./bin/example_static_linux ./example/static
+	env GOOS=windows GOARCH=amd64 go build -o ./bin/example_static_windows.exe ./example/static
