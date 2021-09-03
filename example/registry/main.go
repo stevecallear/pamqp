@@ -34,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	r, err := pamqp.NewRegistry(conn)
+	r, err := pamqp.NewRegistry(conn, pamqp.WithConsumerNaming("consumer", "pamqp", "registry"))
 	if err != nil {
 		log.Fatal(err)
 	}
