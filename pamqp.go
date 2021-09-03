@@ -43,6 +43,7 @@ type (
 		ChannelFn      func(*amqp.Connection) (Channel, error)
 		ExchangeNameFn func(proto.Message) (string, error)
 		QueueNameFn    func(proto.Message) (string, error)
+		RoutingKeyFn   func(proto.Message) (string, error)
 		MiddlewareFn   MiddlewareFunc
 		ErrorFn        func(Metadata, error)
 	}
@@ -68,6 +69,9 @@ var (
 		},
 		QueueNameFn: func(m proto.Message) (string, error) {
 			return strings.ToLower(MessageName(m)), nil
+		},
+		RoutingKeyFn: func(proto.Message) (string, error) {
+			return "", nil
 		},
 		ErrorFn: func(_ Metadata, err error) {
 			log.Println(err)

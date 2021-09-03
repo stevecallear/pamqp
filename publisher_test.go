@@ -57,6 +57,18 @@ func TestPublisher_Publish(t *testing.T) {
 			errCount: 1,
 		},
 		{
+			name:  "should return an error if the routing key cannot be resolved",
+			setup: func(m *mocks.MockChannelMockRecorder) {},
+			optFn: func(o *pamqp.Options) {
+				o.RoutingKeyFn = func(proto.Message) (string, error) {
+					return "", errors.New("error")
+				}
+			},
+			mdFn:     func(*pamqp.Metadata) {},
+			input:    msg,
+			errCount: 1,
+		},
+		{
 			name:  "should return publish errors",
 			optFn: func(o *pamqp.Options) {},
 			setup: func(m *mocks.MockChannelMockRecorder) {
