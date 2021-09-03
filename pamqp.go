@@ -64,10 +64,10 @@ var (
 			return c.Channel()
 		},
 		ExchangeNameFn: func(m proto.Message) (string, error) {
-			return entityName("", m), nil
+			return strings.ToLower(MessageName(m)), nil
 		},
 		QueueNameFn: func(m proto.Message) (string, error) {
-			return entityName("", m), nil
+			return strings.ToLower(MessageName(m)), nil
 		},
 		ErrorFn: func(_ Metadata, err error) {
 			log.Println(err)
@@ -103,17 +103,4 @@ func WithMiddleware(mw ...MiddlewareFunc) func(*Options) {
 	return func(o *Options) {
 		o.MiddlewareFn = ChainMiddleware(mw...)
 	}
-}
-
-func entityName(prefix string, m proto.Message) string {
-	sb := new(strings.Builder)
-
-	if prefix != "" {
-		sb.WriteString(prefix)
-		sb.WriteString(".")
-	}
-
-	sb.WriteString(strings.ToLower(MessageName(m)))
-
-	return sb.String()
 }

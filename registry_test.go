@@ -284,10 +284,10 @@ func TestRegistry_Close(t *testing.T) {
 	}
 }
 
-func TestWithConsumerPrefix(t *testing.T) {
+func TestWithConsumerNaming(t *testing.T) {
 	t.Run("should configure the options", func(t *testing.T) {
 		var o pamqp.RegistryOptions
-		pamqp.WithConsumerPrefix("consumer")(&o)
+		pamqp.WithConsumerNaming("consumer")(&o)
 
 		msg := new(testpb.Message)
 
@@ -296,6 +296,21 @@ func TestWithConsumerPrefix(t *testing.T) {
 		}
 
 		if act, exp := o.QueueNameFn(msg), "consumer.test.message"; act != exp {
+			t.Errorf("got %s, expected %s", act, exp)
+		}
+	})
+
+	t.Run("should configure the options with prefixes", func(t *testing.T) {
+		var o pamqp.RegistryOptions
+		pamqp.WithConsumerNaming("consumer", "p1", "p2")(&o)
+
+		msg := new(testpb.Message)
+
+		if act, exp := o.ExchangeNameFn(msg), "p1.p2.test.message"; act != exp {
+			t.Errorf("got %s, expected %s", act, exp)
+		}
+
+		if act, exp := o.QueueNameFn(msg), "p1.p2.consumer.test.message"; act != exp {
 			t.Errorf("got %s, expected %s", act, exp)
 		}
 	})
