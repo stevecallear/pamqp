@@ -42,28 +42,28 @@ Calls to `Consume` will only return an error if infrastructure resolution fails.
 ## Registry
 `Registry` is responsible for the craetion of AMQP infrastructure by convention. By default the registry will create a fanout exchange and associated queue for each message type. This effectively results in each consumer acting as a competing consumer.
 
-To support more typical routing patterns, the registry should be configured to generate a separate queue for each consuming service. This convention can be applied with `pamqp.WithPrefixNaming`.
+To support more typical routing patterns, the registry should be configured to generate a separate queue for each consuming service. This convention can be applied with `pamqp.WithConsumerNaming`.
 
 ### Example
-Service 'a' publishes a message to the `dev-package-message` exchange. All instances of service 'a' will publish to the same exchange.
+Service 'a' publishes a message to the `package.message` exchange. All instances of service 'a' will publish to the same exchange.
 ```
-r, _ := pamqp.NewRegistry(conn, pamqp.WithPrefixNaming("dev", "a"))
+r, _ := pamqp.NewRegistry(conn, pamqp.WithConsumerNaming("a"))
 p, _ := pamqp.NewPublisher(conn, pamqp.WithRegistry(r))
 
 p.Publish(ctx, new(package.Message))
 ```
 
-Service 'b' consumes published messages by creating a service-specific queue named `dev-package-message-b` and binding it to the exchange. All instances of service 'b' will act as competing consumers.
+Service 'b' consumes published messages by creating a service-specific queue named `b.package.message` and binding it to the exchange. All instances of service 'b' will act as competing consumers.
 ```
-r, _ := pamqp.NewRegistry(conn, pamqp.WithPrefixNaming("dev", "b"))
+r, _ := pamqp.NewRegistry(conn, pamqp.WithConsumerNaming("b"))
 c := pamqp.NewConsumer(conn, pamqp.WithRegistry(r))
 
 c.Consume(ctx, new(handler))
 ```
 
-Service 'c' consumes messages from the same exchange by creating a second service-specific queue named `dev-package-message-c`. This is bound to the same exchange, resulting in fanout behaviour, but with all instances of service 'c' acting as competing consumers.
+Service 'c' consumes messages from the same exchange by creating a second service-specific queue named `c.package.message`. This is bound to the same exchange, resulting in fanout behaviour, but with all instances of service 'c' acting as competing consumers.
 ```
-r, _ := pamqp.NewRegistry(conn, pamqp.WithPrefixNaming("dev", "c"))
+r, _ := pamqp.NewRegistry(conn, pamqp.WithConsumerNaming("c"))
 c := pamqp.NewConsumer(conn, pamqp.WithRegistry(r))
 
 c.Consume(ctx, new(handler))
