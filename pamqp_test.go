@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/stevecallear/pamqp"
-	"github.com/stevecallear/pamqp/internal/proto/testpb"
+	"github.com/stevecallear/pamqp/proto/testpb"
 )
 
 func TestMessageName(t *testing.T) {
