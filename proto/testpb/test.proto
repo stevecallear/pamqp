@@ -1,7 +1,7 @@
 syntax = "proto3";
 package test;
 
-option go_package = "github.com/stevecallear/pamqp/internal/proto/testpb";
+option go_package = "github.com/stevecallear/pamqp/proto/testpb";
 
 message Message {
     string value = 1;

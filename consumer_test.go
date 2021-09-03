@@ -14,7 +14,7 @@ import (
 
 	"github.com/stevecallear/pamqp"
 	"github.com/stevecallear/pamqp/internal/mocks"
-	"github.com/stevecallear/pamqp/internal/proto/testpb"
+	"github.com/stevecallear/pamqp/proto/testpb"
 )
 
 func TestConsumer_Consume(t *testing.T) {
