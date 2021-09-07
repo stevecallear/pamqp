@@ -11,18 +11,30 @@ import (
 type (
 	// Registry represents an exchange/queue registry
 	Registry struct {
-		exchangeNameFn func(proto.Message) string
-		queueNameFn    func(proto.Message) string
-		channel        Channel
-		store          map[string]string
-		mu             sync.RWMutex
+		exchangeNameFn           func(proto.Message) string
+		queueNameFn              func(proto.Message) string
+		deadLetterExchangeNameFn func(proto.Message) string
+		deadLetterQueueNameFn    func(proto.Message) string
+		deadLetterKeyFn          func(proto.Message) string
+		channel                  Channel
+		cache                    map[string][]string
+		mu                       sync.RWMutex
 	}
 
 	// RegistryOptions represents a set of registry options
 	RegistryOptions struct {
-		ChannelFn      func(*amqp.Connection) (Channel, error)
-		ExchangeNameFn func(proto.Message) string
-		QueueNameFn    func(proto.Message) string
+		ChannelFn                func(*amqp.Connection) (Channel, error)
+		ExchangeNameFn           func(proto.Message) string
+		QueueNameFn              func(proto.Message) string
+		DeadLetterExchangeNameFn func(proto.Message) string
+		DeadLetterQueueNameFn    func(proto.Message) string
+		DeadLetterKeyFn          func(proto.Message) string
+	}
+
+	deadLetterConfig struct {
+		exchange string
+		queue    string
+		key      string
 	}
 )
 
@@ -34,6 +46,15 @@ var defaultRegistryOptions = RegistryOptions{
 		return strings.ToLower(MessageName(m))
 	},
 	QueueNameFn: func(m proto.Message) string {
+		return strings.ToLower(MessageName(m))
+	},
+	DeadLetterExchangeNameFn: func(proto.Message) string {
+		return "default_dlx"
+	},
+	DeadLetterQueueNameFn: func(m proto.Message) string {
+		return strings.ToLower(MessageName(m)) + "_dlq"
+	},
+	DeadLetterKeyFn: func(m proto.Message) string {
 		return strings.ToLower(MessageName(m))
 	},
 }
@@ -51,49 +72,70 @@ func NewRegistry(conn *amqp.Connection, optFns ...func(*RegistryOptions)) (*Regi
 	}
 
 	return &Registry{
-		exchangeNameFn: o.ExchangeNameFn,
-		queueNameFn:    o.QueueNameFn,
-		channel:        ch,
-		store:          map[string]string{},
+		exchangeNameFn:           o.ExchangeNameFn,
+		queueNameFn:              o.QueueNameFn,
+		deadLetterExchangeNameFn: o.DeadLetterExchangeNameFn,
+		deadLetterQueueNameFn:    o.DeadLetterQueueNameFn,
+		deadLetterKeyFn:          o.DeadLetterKeyFn,
+		channel:                  ch,
+		cache:                    map[string][]string{},
 	}, nil
 }
 
 // Exchange ensures that the specified exchange exists and returns the name
 func (r *Registry) Exchange(m proto.Message) (string, error) {
-	return r.getOrSet("exchange:"+MessageName(m), func() (string, error) {
+	v, err := r.getOrSet("x:"+MessageName(m), func() ([]string, error) {
 		en := r.exchangeNameFn(m)
 
 		err := r.channel.ExchangeDeclare(en, amqp.ExchangeFanout, true, false, false, false, nil)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return en, nil
+		return []string{en}, nil
 	})
-}
-
-// Queue ensures that the specified queue exists and returns the name
-func (r *Registry) Queue(m proto.Message) (string, error) {
-	en, err := r.Exchange(m)
 	if err != nil {
 		return "", err
 	}
 
-	return r.getOrSet("queue:"+MessageName(m), func() (string, error) {
+	return v[0], nil
+}
+
+// Queue ensures that the specified queue exists and returns the name
+func (r *Registry) Queue(m proto.Message) (string, error) {
+	dlc, err := r.ensureDeadLetterConfig(m)
+	if err != nil {
+		return "", err
+	}
+
+	xn, err := r.Exchange(m)
+	if err != nil {
+		return "", err
+	}
+
+	v, err := r.getOrSet("q:"+MessageName(m), func() ([]string, error) {
 		qn := r.queueNameFn(m)
 
-		q, err := r.channel.QueueDeclare(qn, true, false, false, false, nil)
+		q, err := r.channel.QueueDeclare(qn, true, false, false, false, amqp.Table{
+			"x-dead-letter-exchange":    dlc.exchange,
+			"x-dead-letter-routing-key": dlc.key,
+		})
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		err = r.channel.QueueBind(q.Name, "", en, false, nil)
+		err = r.channel.QueueBind(q.Name, "", xn, false, nil)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return q.Name, err
+		return []string{q.Name}, err
 	})
+	if err != nil {
+		return "", err
+	}
+
+	return v[0], nil
 }
 
 // Close closes the underlying channel
@@ -101,12 +143,54 @@ func (r *Registry) Close() error {
 	return r.channel.Close()
 }
 
-func (r *Registry) getOrSet(key string, fn func() (string, error)) (string, error) {
-	v, ok := func() (string, bool) {
+func (r *Registry) ensureDeadLetterConfig(m proto.Message) (deadLetterConfig, error) {
+	var dlc deadLetterConfig
+
+	dlx, err := r.getOrSet("dlx:"+MessageName(m), func() ([]string, error) {
+		n := r.deadLetterExchangeNameFn(m)
+		err := r.channel.ExchangeDeclare(n, amqp.ExchangeDirect, true, false, false, false, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		return []string{n}, nil
+	})
+	if err != nil {
+		return dlc, err
+	}
+
+	dlq, err := r.getOrSet("dlq:"+MessageName(m), func() ([]string, error) {
+		n := r.deadLetterQueueNameFn(m)
+		q, err := r.channel.QueueDeclare(n, true, false, false, false, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		k := r.deadLetterKeyFn(m)
+		err = r.channel.QueueBind(q.Name, k, dlx[0], false, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		return []string{q.Name, k}, nil
+	})
+	if err != nil {
+		return dlc, err
+	}
+
+	dlc.exchange = dlx[0]
+	dlc.queue = dlq[0]
+	dlc.key = dlq[1]
+
+	return dlc, nil
+}
+
+func (r *Registry) getOrSet(key string, fn func() ([]string, error)) ([]string, error) {
+	v, ok := func() ([]string, bool) {
 		r.mu.RLock()
 		defer r.mu.RUnlock()
 
-		v, ok := r.store[key]
+		v, ok := r.cache[key]
 		return v, ok
 	}()
 	if ok {
@@ -116,17 +200,17 @@ func (r *Registry) getOrSet(key string, fn func() (string, error)) (string, erro
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if v, ok = r.store[key]; ok {
+	if v, ok = r.cache[key]; ok {
 		return v, nil
 	}
 
 	var err error
 	v, err = fn()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	r.store[key] = v
+	r.cache[key] = v
 	return v, nil
 }
 
@@ -148,6 +232,15 @@ func WithConsumerNaming(consumer string, prefixes ...string) func(*RegistryOptio
 			return fmtN(pre, strings.ToLower(MessageName(m)))
 		}
 		o.QueueNameFn = func(m proto.Message) string {
+			return fmtN(con, strings.ToLower(MessageName(m)))
+		}
+		o.DeadLetterExchangeNameFn = func(proto.Message) string {
+			return fmtN(pre, "default_dlx")
+		}
+		o.DeadLetterQueueNameFn = func(m proto.Message) string {
+			return fmtN(con, strings.ToLower(MessageName(m))+"_dlq")
+		}
+		o.DeadLetterKeyFn = func(m proto.Message) string {
 			return fmtN(con, strings.ToLower(MessageName(m)))
 		}
 	}
