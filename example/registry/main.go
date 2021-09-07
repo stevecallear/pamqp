@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strconv"
@@ -25,7 +27,16 @@ func (h *handler) Message() proto.Message {
 func (h *handler) Handle(ctx context.Context, m proto.Message, md pamqp.Metadata) error {
 	tm := m.(*testpb.Message)
 	log.Printf("received: %s value=%s", md.ID, tm.Value)
+
+	if rand.Intn(5) == 0 {
+		return errors.New("error")
+	}
+
 	return nil
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
 func main() {
