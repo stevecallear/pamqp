@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/stevecallear/pamqp"
-	"github.com/stevecallear/pamqp/proto/testpb"
+	"github.com/stevecallear/pamqp/internal/proto/testpb"
 )
 
 const (

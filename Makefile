@@ -1,6 +1,6 @@
 .PHONY: proto
 proto:
-	protoc -I. --go_out=plugins=grpc,paths=source_relative:. ./proto/testpb/*.proto
+	protoc -I. --go_out=plugins=grpc,paths=source_relative:. ./internal/proto/testpb/*.proto
 
 .PHONY: generate
 generate: proto
